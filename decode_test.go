@@ -419,7 +419,7 @@ func TestMarshalNumberZeroVal(t *testing.T) {
 
 func TestUnmarshal(t *testing.T) {
 	for i, tt := range unmarshalTests {
-		var scan scanner
+		var scan Scanner
 		in := []byte(tt.in)
 		if err := checkValid(in, &scan); err != nil {
 			if !reflect.DeepEqual(err, tt.err) {
