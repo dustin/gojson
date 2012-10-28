@@ -139,8 +139,8 @@ func (d *decodeState) unmarshal(v interface{}) (err error) {
 		return &InvalidUnmarshalError{reflect.TypeOf(v)}
 	}
 
-	d.scan.reset()
-	// We decode rv not rv.Elem because the Unmarshaler interface
+	d.scan.Reset()
+	// We decode rv not pv.Elem because the Unmarshaler interface
 	// test must be applied at the top level of the value.
 	d.value(rv)
 	return d.savedError
@@ -166,8 +166,8 @@ func (n Number) Int64() (int64, error) {
 type decodeState struct {
 	data       []byte
 	off        int // read offset in data
-	scan       scanner
-	nextscan   scanner // for calls to nextValue
+	scan       Scanner
+	nextscan   Scanner // for calls to nextValue
 	savedError error
 	tempstr    string // scratch space to avoid some allocations
 	useNumber  bool
@@ -202,7 +202,7 @@ func (d *decodeState) saveError(err error) {
 // The next value is known to be an object or array, not a literal.
 func (d *decodeState) next() []byte {
 	c := d.data[d.off]
-	item, rest, err := nextValue(d.data[d.off:], &d.nextscan)
+	item, rest, err := NextValue(d.data[d.off:], &d.nextscan)
 	if err != nil {
 		d.error(err)
 	}
@@ -212,9 +212,9 @@ func (d *decodeState) next() []byte {
 	// and thinks we're still in the middle of the object.
 	// invent a closing brace/bracket to get it out.
 	if c == '{' {
-		d.scan.step(&d.scan, '}')
+		d.scan.Step(&d.scan, '}')
 	} else {
-		d.scan.step(&d.scan, ']')
+		d.scan.Step(&d.scan, ']')
 	}
 
 	return item
@@ -227,12 +227,12 @@ func (d *decodeState) scanWhile(op int) int {
 	var newOp int
 	for {
 		if d.off >= len(d.data) {
-			newOp = d.scan.eof()
+			newOp = d.scan.EOF()
 			d.off = len(d.data) + 1 // mark processed EOF with len+1
 		} else {
 			c := int(d.data[d.off])
 			d.off++
-			newOp = d.scan.step(&d.scan, c)
+			newOp = d.scan.Step(&d.scan, c)
 		}
 		if newOp != op {
 			break
@@ -245,7 +245,7 @@ func (d *decodeState) scanWhile(op int) int {
 // it updates d.off to point past the decoded value.
 func (d *decodeState) value(v reflect.Value) {
 	if !v.IsValid() {
-		_, rest, err := nextValue(d.data[d.off:], &d.nextscan)
+		_, rest, err := NextValue(d.data[d.off:], &d.nextscan)
 		if err != nil {
 			d.error(err)
 		}
@@ -257,24 +257,24 @@ func (d *decodeState) value(v reflect.Value) {
 		if d.scan.redo {
 			// rewind.
 			d.scan.redo = false
-			d.scan.step = stateBeginValue
+			d.scan.Step = stateBeginValue
 		}
-		d.scan.step(&d.scan, '"')
-		d.scan.step(&d.scan, '"')
+		d.scan.Step(&d.scan, '"')
+		d.scan.Step(&d.scan, '"')
 		return
 	}
 
-	switch op := d.scanWhile(scanSkipSpace); op {
+	switch op := d.scanWhile(ScanSkipSpace); op {
 	default:
 		d.error(errPhase)
 
-	case scanBeginArray:
+	case ScanBeginArray:
 		d.array(v)
 
-	case scanBeginObject:
+	case ScanBeginObject:
 		d.object(v)
 
-	case scanBeginLiteral:
+	case ScanBeginLiteral:
 		d.literal(v)
 	}
 }
@@ -359,8 +359,8 @@ func (d *decodeState) array(v reflect.Value) {
 	i := 0
 	for {
 		// Look ahead for ] - can only happen on first iteration.
-		op := d.scanWhile(scanSkipSpace)
-		if op == scanEndArray {
+		op := d.scanWhile(ScanSkipSpace)
+		if op == ScanEndArray {
 			break
 		}
 
@@ -395,11 +395,11 @@ func (d *decodeState) array(v reflect.Value) {
 		i++
 
 		// Next token must be , or ].
-		op = d.scanWhile(scanSkipSpace)
-		if op == scanEndArray {
+		op = d.scanWhile(ScanSkipSpace)
+		if op == ScanEndArray {
 			break
 		}
-		if op != scanArrayValue {
+		if op != ScanArrayValue {
 			d.error(errPhase)
 		}
 	}
@@ -466,18 +466,18 @@ func (d *decodeState) object(v reflect.Value) {
 
 	for {
 		// Read opening " of string key or closing }.
-		op := d.scanWhile(scanSkipSpace)
-		if op == scanEndObject {
+		op := d.scanWhile(ScanSkipSpace)
+		if op == ScanEndObject {
 			// closing } - can only happen on first iteration.
 			break
 		}
-		if op != scanBeginLiteral {
+		if op != ScanBeginLiteral {
 			d.error(errPhase)
 		}
 
 		// Read string key.
 		start := d.off - 1
-		op = d.scanWhile(scanContinue)
+		op = d.scanWhile(ScanContinue)
 		item := d.data[start : d.off-1]
 		key, ok := unquote(item)
 		if !ok {
@@ -525,10 +525,10 @@ func (d *decodeState) object(v reflect.Value) {
 		}
 
 		// Read : before value.
-		if op == scanSkipSpace {
-			op = d.scanWhile(scanSkipSpace)
+		if op == ScanSkipSpace {
+			op = d.scanWhile(ScanSkipSpace)
 		}
-		if op != scanObjectKey {
+		if op != ScanObjectKey {
 			d.error(errPhase)
 		}
 
@@ -548,11 +548,11 @@ func (d *decodeState) object(v reflect.Value) {
 		}
 
 		// Next token must be , or }.
-		op = d.scanWhile(scanSkipSpace)
-		if op == scanEndObject {
+		op = d.scanWhile(ScanSkipSpace)
+		if op == ScanEndObject {
 			break
 		}
-		if op != scanObjectValue {
+		if op != ScanObjectValue {
 			d.error(errPhase)
 		}
 	}
@@ -564,7 +564,7 @@ func (d *decodeState) object(v reflect.Value) {
 func (d *decodeState) literal(v reflect.Value) {
 	// All bytes inside literal return scanContinue op code.
 	start := d.off - 1
-	op := d.scanWhile(scanContinue)
+	op := d.scanWhile(ScanContinue)
 
 	// Scan read one byte too far; back up.
 	d.off--
@@ -638,7 +638,7 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 		}
 
 	case '"': // string
-		s, ok := unquoteBytes(item)
+		s, ok := UnquoteBytes(item)
 		if !ok {
 			if fromQuoted {
 				d.error(fmt.Errorf("json: invalid use of ,string struct tag, trying to unmarshal %q into %v", item, v.Type()))
@@ -736,14 +736,14 @@ func (d *decodeState) literalStore(item []byte, v reflect.Value, fromQuoted bool
 
 // valueInterface is like value but returns interface{}
 func (d *decodeState) valueInterface() interface{} {
-	switch d.scanWhile(scanSkipSpace) {
+	switch d.scanWhile(ScanSkipSpace) {
 	default:
 		d.error(errPhase)
-	case scanBeginArray:
+	case ScanBeginArray:
 		return d.arrayInterface()
-	case scanBeginObject:
+	case ScanBeginObject:
 		return d.objectInterface()
-	case scanBeginLiteral:
+	case ScanBeginLiteral:
 		return d.literalInterface()
 	}
 	panic("unreachable")
@@ -754,8 +754,8 @@ func (d *decodeState) arrayInterface() []interface{} {
 	var v = make([]interface{}, 0)
 	for {
 		// Look ahead for ] - can only happen on first iteration.
-		op := d.scanWhile(scanSkipSpace)
-		if op == scanEndArray {
+		op := d.scanWhile(ScanSkipSpace)
+		if op == ScanEndArray {
 			break
 		}
 
@@ -766,11 +766,11 @@ func (d *decodeState) arrayInterface() []interface{} {
 		v = append(v, d.valueInterface())
 
 		// Next token must be , or ].
-		op = d.scanWhile(scanSkipSpace)
-		if op == scanEndArray {
+		op = d.scanWhile(ScanSkipSpace)
+		if op == ScanEndArray {
 			break
 		}
-		if op != scanArrayValue {
+		if op != ScanArrayValue {
 			d.error(errPhase)
 		}
 	}
@@ -782,18 +782,18 @@ func (d *decodeState) objectInterface() map[string]interface{} {
 	m := make(map[string]interface{})
 	for {
 		// Read opening " of string key or closing }.
-		op := d.scanWhile(scanSkipSpace)
-		if op == scanEndObject {
+		op := d.scanWhile(ScanSkipSpace)
+		if op == ScanEndObject {
 			// closing } - can only happen on first iteration.
 			break
 		}
-		if op != scanBeginLiteral {
+		if op != ScanBeginLiteral {
 			d.error(errPhase)
 		}
 
 		// Read string key.
 		start := d.off - 1
-		op = d.scanWhile(scanContinue)
+		op = d.scanWhile(ScanContinue)
 		item := d.data[start : d.off-1]
 		key, ok := unquote(item)
 		if !ok {
@@ -801,10 +801,10 @@ func (d *decodeState) objectInterface() map[string]interface{} {
 		}
 
 		// Read : before value.
-		if op == scanSkipSpace {
-			op = d.scanWhile(scanSkipSpace)
+		if op == ScanSkipSpace {
+			op = d.scanWhile(ScanSkipSpace)
 		}
-		if op != scanObjectKey {
+		if op != ScanObjectKey {
 			d.error(errPhase)
 		}
 
@@ -812,11 +812,11 @@ func (d *decodeState) objectInterface() map[string]interface{} {
 		m[key] = d.valueInterface()
 
 		// Next token must be , or }.
-		op = d.scanWhile(scanSkipSpace)
-		if op == scanEndObject {
+		op = d.scanWhile(ScanSkipSpace)
+		if op == ScanEndObject {
 			break
 		}
-		if op != scanObjectValue {
+		if op != ScanObjectValue {
 			d.error(errPhase)
 		}
 	}
@@ -827,7 +827,7 @@ func (d *decodeState) objectInterface() map[string]interface{} {
 func (d *decodeState) literalInterface() interface{} {
 	// All bytes inside literal return scanContinue op code.
 	start := d.off - 1
-	op := d.scanWhile(scanContinue)
+	op := d.scanWhile(ScanContinue)
 
 	// Scan read one byte too far; back up.
 	d.off--
@@ -877,12 +877,12 @@ func getu4(s []byte) rune {
 // unquote converts a quoted JSON string literal s into an actual string t.
 // The rules are different than for Go, so cannot use strconv.Unquote.
 func unquote(s []byte) (t string, ok bool) {
-	s, ok = unquoteBytes(s)
+	s, ok = UnquoteBytes(s)
 	t = string(s)
 	return
 }
 
-func unquoteBytes(s []byte) (t []byte, ok bool) {
+func UnquoteBytes(s []byte) (t []byte, ok bool) {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return
 	}

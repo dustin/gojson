@@ -14,8 +14,8 @@ func Compact(dst *bytes.Buffer, src []byte) error {
 
 func compact(dst *bytes.Buffer, src []byte, escape bool) error {
 	origLen := dst.Len()
-	var scan scanner
-	scan.reset()
+	var scan Scanner
+	scan.Reset()
 	start := 0
 	for i, c := range src {
 		if escape && (c == '<' || c == '>' || c == '&') {
@@ -27,9 +27,9 @@ func compact(dst *bytes.Buffer, src []byte, escape bool) error {
 			dst.WriteByte(hex[c&0xF])
 			start = i + 1
 		}
-		v := scan.step(&scan, int(c))
-		if v >= scanSkipSpace {
-			if v == scanError {
+		v := scan.Step(&scan, int(c))
+		if v >= ScanSkipSpace {
+			if v == ScanError {
 				break
 			}
 			if start < i {
@@ -38,7 +38,7 @@ func compact(dst *bytes.Buffer, src []byte, escape bool) error {
 			start = i + 1
 		}
 	}
-	if scan.eof() == scanError {
+	if scan.EOF() == ScanError {
 		dst.Truncate(origLen)
 		return scan.err
 	}
@@ -64,20 +64,20 @@ func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
 // to embed inside other formatted JSON data.
 func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 	origLen := dst.Len()
-	var scan scanner
-	scan.reset()
+	var scan Scanner
+	scan.Reset()
 	needIndent := false
 	depth := 0
 	for _, c := range src {
 		scan.bytes++
-		v := scan.step(&scan, int(c))
-		if v == scanSkipSpace {
+		v := scan.Step(&scan, int(c))
+		if v == ScanSkipSpace {
 			continue
 		}
-		if v == scanError {
+		if v == ScanError {
 			break
 		}
-		if needIndent && v != scanEndObject && v != scanEndArray {
+		if needIndent && v != ScanEndObject && v != ScanEndArray {
 			needIndent = false
 			depth++
 			newline(dst, prefix, indent, depth)
@@ -85,7 +85,7 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 
 		// Emit semantically uninteresting bytes
 		// (in particular, punctuation in strings) unmodified.
-		if v == scanContinue {
+		if v == ScanContinue {
 			dst.WriteByte(c)
 			continue
 		}
@@ -119,7 +119,7 @@ func Indent(dst *bytes.Buffer, src []byte, prefix, indent string) error {
 			dst.WriteByte(c)
 		}
 	}
-	if scan.eof() == scanError {
+	if scan.EOF() == ScanError {
 		dst.Truncate(origLen)
 		return scan.err
 	}
