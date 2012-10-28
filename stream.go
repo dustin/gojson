@@ -14,7 +14,7 @@ type Decoder struct {
 	r    io.Reader
 	buf  []byte
 	d    decodeState
-	scan scanner
+	scan Scanner
 	err  error
 }
 
@@ -61,7 +61,7 @@ func (dec *Decoder) Decode(v interface{}) error {
 // readValue reads a JSON value into dec.buf.
 // It returns the length of the encoding.
 func (dec *Decoder) readValue() (int, error) {
-	dec.scan.reset()
+	dec.scan.Reset()
 
 	scanp := 0
 	var err error
@@ -70,19 +70,19 @@ Input:
 		// Look in the buffer for a new value.
 		for i, c := range dec.buf[scanp:] {
 			dec.scan.bytes++
-			v := dec.scan.step(&dec.scan, int(c))
-			if v == scanEnd {
+			v := dec.scan.Step(&dec.scan, int(c))
+			if v == ScanEnd {
 				scanp += i
 				break Input
 			}
 			// scanEnd is delayed one byte.
 			// We might block trying to get that byte from src,
 			// so instead invent a space byte.
-			if (v == scanEndObject || v == scanEndArray) && dec.scan.step(&dec.scan, ' ') == scanEnd {
+			if (v == ScanEndObject || v == ScanEndArray) && dec.scan.Step(&dec.scan, ' ') == ScanEnd {
 				scanp += i + 1
 				break Input
 			}
-			if v == scanError {
+			if v == ScanError {
 				dec.err = dec.scan.err
 				return 0, dec.scan.err
 			}
@@ -93,7 +93,7 @@ Input:
 		// Delayed until now to allow buffer scan.
 		if err != nil {
 			if err == io.EOF {
-				if dec.scan.step(&dec.scan, ' ') == scanEnd {
+				if dec.scan.Step(&dec.scan, ' ') == ScanEnd {
 					break Input
 				}
 				if nonSpace(dec.buf) {
