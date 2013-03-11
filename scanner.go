@@ -31,6 +31,12 @@ func checkValid(data []byte, scan *Scanner) error {
 	return nil
 }
 
+// Validate some alleged JSON.  Return nil iff the JSON is valid.
+func Validate(data []byte) error {
+	s := &Scanner{}
+	return checkValid(data, s)
+}
+
 // nextValue splits data after the next whole JSON value,
 // returning that value and the bytes that follow it as separate slices.
 // scan is passed in for use by nextValue to avoid an allocation.
