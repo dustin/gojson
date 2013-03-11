@@ -953,3 +953,21 @@ func TestInterfaceSet(t *testing.T) {
 		}
 	}
 }
+
+func TestValidator(t *testing.T) {
+	for _, tt := range unmarshalTests {
+		// Don't care about the valid json with type errors
+		expectederr := tt.err
+		if _, ok := expectederr.(*UnmarshalTypeError); ok {
+			expectederr = nil
+		}
+		if _, ok := expectederr.(*UnmarshalFieldError); ok {
+			expectederr = nil
+		}
+		err := Validate([]byte(tt.in))
+		if (expectederr == nil) != (err == nil) {
+			t.Errorf("Incorrectly validated %v - %v/%v",
+				tt.in, expectederr, err)
+		}
+	}
+}
