@@ -894,9 +894,11 @@ func unquote(s []byte) (t string, ok bool) {
 }
 
 func UnquoteBytes(s []byte) (t []byte, ok bool) {
-	s = bytes.TrimSpace(s)
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
-		return
+		s = bytes.TrimSpace(s)
+		if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+			return
+		}
 	}
 	s = s[1 : len(s)-1]
 
