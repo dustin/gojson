@@ -8,6 +8,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -876,6 +877,7 @@ func unquote(s []byte) (t string, ok bool) {
 }
 
 func UnquoteBytes(s []byte) (t []byte, ok bool) {
+	s = bytes.TrimSpace(s)
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return
 	}
