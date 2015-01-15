@@ -187,17 +187,3 @@ func BenchmarkUnmarshalInt64(b *testing.B) {
 		}
 	}
 }
-
-func BenchmarkValidation(b *testing.B) {
-	if codeJSON == nil {
-		b.StopTimer()
-		codeInit()
-		b.StartTimer()
-	}
-	for i := 0; i < b.N; i++ {
-		if err := Validate(codeJSON); err != nil {
-			b.Fatal("Unmmarshal:", err)
-		}
-	}
-	b.SetBytes(int64(len(codeJSON)))
-}
