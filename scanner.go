@@ -8,7 +8,7 @@ package json
 // Just about at the limit of what is reasonable to write by hand.
 // Some parts are a bit tedious, but overall it nicely factors out the
 // otherwise common code from the multiple scanning functions
-// in this package (Compact, Indent, checkValid, nextValue, etc).
+// in this package (Compact, Indent, checkValid, NextValue, etc).
 //
 // This file starts with two simple examples using the scanner
 // before diving into the scanner itself.
@@ -37,10 +37,10 @@ func Validate(data []byte) error {
 	return checkValid(data, s)
 }
 
-// nextValue splits data after the next whole JSON value,
+// NextValue splits data after the next whole JSON value,
 // returning that value and the bytes that follow it as separate slices.
-// scan is passed in for use by nextValue to avoid an allocation.
-func nextValue(data []byte, scan *Scanner) (value, rest []byte, err error) {
+// scan is passed in for use by NextValue to avoid an allocation.
+func NextValue(data []byte, scan *Scanner) (value, rest []byte, err error) {
 	scan.Reset()
 	for i, c := range data {
 		v := scan.Step(scan, int(c))

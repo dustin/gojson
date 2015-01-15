@@ -182,9 +182,9 @@ func TestIndentErrors(t *testing.T) {
 func TestNextValueBig(t *testing.T) {
 	initBig()
 	var scan Scanner
-	item, rest, err := nextValue(jsonBig, &scan)
+	item, rest, err := NextValue(jsonBig, &scan)
 	if err != nil {
-		t.Fatalf("nextValue: %s", err)
+		t.Fatalf("NextValue: %s", err)
 	}
 	if len(item) != len(jsonBig) || &item[0] != &jsonBig[0] {
 		t.Errorf("invalid item: %d %d", len(item), len(jsonBig))
@@ -193,9 +193,9 @@ func TestNextValueBig(t *testing.T) {
 		t.Errorf("invalid rest: %d", len(rest))
 	}
 
-	item, rest, err = nextValue(append(jsonBig, "HELLO WORLD"...), &scan)
+	item, rest, err = NextValue(append(jsonBig, "HELLO WORLD"...), &scan)
 	if err != nil {
-		t.Fatalf("nextValue extra: %s", err)
+		t.Fatalf("NextValue extra: %s", err)
 	}
 	if len(item) != len(jsonBig) {
 		t.Errorf("invalid item: %d %d", len(item), len(jsonBig))
@@ -210,7 +210,7 @@ var benchScan Scanner
 func BenchmarkSkipValue(b *testing.B) {
 	initBig()
 	for i := 0; i < b.N; i++ {
-		nextValue(jsonBig, &benchScan)
+		NextValue(jsonBig, &benchScan)
 	}
 	b.SetBytes(int64(len(jsonBig)))
 }

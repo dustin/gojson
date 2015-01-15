@@ -171,7 +171,7 @@ type decodeState struct {
 	data       []byte
 	off        int // read offset in data
 	scan       Scanner
-	nextscan   Scanner // for calls to nextValue
+	nextscan   Scanner // for calls to NextValue
 	savedError error
 	useNumber  bool
 }
@@ -205,7 +205,7 @@ func (d *decodeState) saveError(err error) {
 // The next value is known to be an object or array, not a literal.
 func (d *decodeState) next() []byte {
 	c := d.data[d.off]
-	item, rest, err := nextValue(d.data[d.off:], &d.nextscan)
+	item, rest, err := NextValue(d.data[d.off:], &d.nextscan)
 	if err != nil {
 		d.error(err)
 	}
@@ -248,7 +248,7 @@ func (d *decodeState) scanWhile(op int) int {
 // it updates d.off to point past the decoded value.
 func (d *decodeState) value(v reflect.Value) {
 	if !v.IsValid() {
-		_, rest, err := nextValue(d.data[d.off:], &d.nextscan)
+		_, rest, err := NextValue(d.data[d.off:], &d.nextscan)
 		if err != nil {
 			d.error(err)
 		}
